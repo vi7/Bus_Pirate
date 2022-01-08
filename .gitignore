@@ -41,3 +41,8 @@
 /Firmware/busPirate.X/nbproject/Package-default.bash
 /Firmware/busPirate.X/nbproject/private/
 /Bootloaders/BPv3-bootloader/firmware-v4.5/ds30loader.X/build/default/
+/Bootloaders/BPv3-bootloader/pirate-loader/CMakeCache.txt
+/Bootloaders/BPv3-bootloader/pirate-loader/CMakeFiles/
+/Bootloaders/BPv3-bootloader/pirate-loader/Makefile
+/Bootloaders/BPv3-bootloader/pirate-loader/cmake_install.cmake
+/Bootloaders/BPv3-bootloader/pirate-loader/pirate-loader

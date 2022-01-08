@@ -1,8 +1,8 @@
 /*
- 
+TODO: change version and changelog if everything works 
  Pirate-Loader for Bootloader v4
  
- Version  : 1.0.2
+ Version  : 1.1.0
  
  Changelog:
  +2010-06-28 - Made HEX parser case-insensative
@@ -42,7 +42,7 @@
 #include <fcntl.h>
 #include <errno.h>
 
-#define PIRATE_LOADER_VERSION "1.0.2"
+#define PIRATE_LOADER_VERSION "1.1.0"
 
 #define STR_EXPAND(tok) #tok
 #define OS_NAME(tok) STR_EXPAND(tok)
@@ -165,7 +165,11 @@
 
 #define BOOTLOADER_HELLO_STR "\xC1"
 #define BOOTLOADER_OK 0x4B
+#define BOOTLOADER_OK_CLONE 0x13  // Bootloader status of Sandbox Electric BPv3.b clone
 #define BOOTLOADER_PLACEMENT 1
+
+#define DEVICE_ID_ORIGINAL 0xD4  // Original BP on PIC24FJ64GA002
+#define DEVICE_ID_CLONE 0x02  // Sandbox Electric BPv3.b clone on PIC24FJ64GA004
 
 #define PIC_FLASHSIZE 0xAC00
 
@@ -387,6 +391,28 @@ int readHEX(const char* file, uint8* bout, unsigned long max_length, uint8* page
 	return num_words;
 }
 
+uint8 bootloaderOk(uint8 status)
+{
+  uint8 valid = 0;
+  switch(status) {
+    case BOOTLOADER_OK:
+    case BOOTLOADER_OK_CLONE:
+      valid = 1;
+  }
+  return valid;
+}
+
+uint8 deviceOk(uint8 id)
+{
+  uint8 valid = 0;
+  switch(id) {
+    case DEVICE_ID_ORIGINAL:
+    case DEVICE_ID_CLONE:
+      valid = 1;
+  }
+  return valid;
+}
+
 uint8 makeCrc(uint8* buf, uint32 len)
 {
 	uint8 crc = 0, i = 0;
@@ -414,7 +440,7 @@ int sendCommandAndWaitForResponse(int fd, uint8 *command)
 	if( res != 1 ) {
 		puts("ERROR");
 		return -1;
-	} else if ( response[0] != BOOTLOADER_OK ) {
+	} else if ( !bootloaderOk(response[0]) ) {
 		printf("ERROR [%02x]\n", response[0]);
 		return -1;
 	} else {
@@ -706,19 +732,29 @@ int main (int argc, const char** argv)
 	
 	res = readWithTimeout(dev_fd, buffer, 4, 3);
 	
-	if( res != 4 || buffer[3] != BOOTLOADER_OK ) {
+	if( res != 4 || !bootloaderOk(buffer[3]) ) {
 		puts("ERROR");
-		fprintf(stderr, "No reply from the bootloader, or invalid reply received: %d\n", res);
+		fprintf(stderr, "No reply from the bootloader, or invalid reply received: 0x%02x\n", buffer[3]);
 		fprintf(stderr, "Please make sure that PGND and PGC are connected, replug the device and try again\n");
 		goto Error;
 	}
 	puts("OK\n"); //extra LF for spacing
 	
-	printf("Device ID: %s [%02x]\n", (buffer[0] == 0xD4) ? "PIC24FJ64GA002" : "UNKNOWN", buffer[0]);
+
+  switch(buffer[0]) {
+    case DEVICE_ID_ORIGINAL:
+	    printf("Device ID: %s [%02x]\n", "PIC24FJ64GA002", buffer[0]);
+      break;
+    case DEVICE_ID_CLONE:
+	    printf("Device ID: %s [%02x]\n", "PIC24FJ64GA004 (Sandbox Electric clone)", buffer[0]);
+      break;
+    default:
+      printf("Device ID: %s [%02x]\n", "UNKNOWN", buffer[0]);
+  }
 	printf("Bootloader version: %d,%02d\n", buffer[1], buffer[2]);
 	
-	if( buffer[0] != 0xD4 ) {
-		fprintf(stderr, "Unsupported device (%02x:UNKNOWN), only 0xD4 PIC24FJ64GA002 is supported\n", buffer[0]);
+	if( !deviceOk(buffer[0]) ) {
+		fprintf(stderr, "Unsupported device (%02x:UNKNOWN)\n", buffer[0]);
 		goto Error;
 	}
 	
